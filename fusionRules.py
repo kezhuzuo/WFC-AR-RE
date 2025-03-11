@@ -24,9 +24,9 @@ def nor_list(m):
 
 def calculateIntersect(string_1, string_2):
     """
-    :param string_1: 字符串
-    :param string_2: 字符串
-    :return: 两字符串的交集
+    :param string_1: string
+    :param string_2: string
+    :return: Intersection of two strings
     """
     result = ''
     for char in string_1:
@@ -37,9 +37,9 @@ def calculateIntersect(string_1, string_2):
 
 def calUnion(str1, str2):
     """
-    :param string_1: 字符串
-    :param string_2: 字符串
-    :return: 两字符串的并集
+    :param str1: string
+    :param str2: string
+    :return: Union of two strings
     """
     result = str2
     for char in str1:
@@ -49,38 +49,37 @@ def calUnion(str1, str2):
 
 
 def Bel(m, fe):
-    """calculate Bel function
-    """
+    """Calculate Bel function"""
     length_fod = len(fe)
     res = np.zeros((1, length_fod))
     for i in range(length_fod):
         for j in range(length_fod):
             tmp = calculateIntersect(fe[i], fe[j])
-            if tmp == fe[j]:  # B与A的交集如果等于B，则B属于A
+            if tmp == fe[j]:  # If the intersection of B and A equals B, then B belongs to A
                 res[0][i] += m[0][j]  # bel function
     return res
 
 
 def DST(mp1, mp2, P):
     """
-    DS证据理论
-    :param mp1: 证据源1，numpy数组，存储信度
-    :param mp2: 证据源2，numpy数组，存储信度
-    :param P: 辨识框架
-    :return: 返回融合信度和冲突因子
+    Dempster-Shafer evidence theory
+    :param mp1: Evidence source 1, numpy array storing belief values
+    :param mp2: Evidence source 2, numpy array storing belief values
+    :param P: Frame of discernment
+    :return: Returns fused belief values and conflict factor
     """
-    length_fod = len(P)  # 幂集长度
-    mp = np.zeros((1, length_fod), 'float64')  # 初始化最终结果mp
-    k_matrix = np.zeros((length_fod, length_fod))  # 冲突因子乘子
+    length_fod = len(P)  # Power set length
+    mp = np.zeros((1, length_fod), 'float64')  # Initialize final result mp
+    k_matrix = np.zeros((length_fod, length_fod))  # Conflict factor multiplier
     for k in range(length_fod):
         tmp = P[k]
-        f_matrix = np.zeros((length_fod, length_fod))  # 融合乘子
+        f_matrix = np.zeros((length_fod, length_fod))  # Fusion multiplier
         for i in range(length_fod):
             for j in range(length_fod):
-                tmp_ij = calculateIntersect(P[i], P[j])  # 有无交集
-                if not tmp_ij:  # 若空集
+                tmp_ij = calculateIntersect(P[i], P[j])  # Check for intersection
+                if not tmp_ij:  # If empty set
                     k_matrix[i][j] = 1
-                if tmp_ij == tmp:  # 若交集等于P[k]
+                if tmp_ij == tmp:  # If intersection equals P[k]
                     f_matrix[i][j] = 1
         mp[0][k] = sum(sum(np.dot(mp1.T, mp2) * f_matrix))
     k = sum(sum(np.dot(mp1.T, mp2) * k_matrix))
@@ -90,31 +89,31 @@ def DST(mp1, mp2, P):
 
 def DSmC(m1, m2, P):
     """
-       计算DSmC融合
+       Compute DSmC fusion
     """
-    length_fod = len(P)  # 幂集长度
-    mf = np.zeros((1, length_fod), 'float64')  # 初始化最终结果mf
+    length_fod = len(P)  # Power set length
+    mf = np.zeros((1, length_fod), 'float64')  # Initialize final result mf
     for k in range(length_fod):
         tmp = P[k]
-        f_matrix = np.zeros((length_fod, length_fod))  # 融合乘子
+        f_matrix = np.zeros((length_fod, length_fod))  # Fusion multiplier
         for i in range(length_fod):
             for j in range(length_fod):
-                tmp_ij = calculateIntersect(P[i], P[j])  # 有无交集
-                if tmp_ij == tmp:  # 若交集等于P[k]
+                tmp_ij = calculateIntersect(P[i], P[j])  # Check for intersection
+                if tmp_ij == tmp:  # If intersection equals P[k]
                     mf[0][k] += m1[0][i] * m2[0][j]
     return mf
 
 
-def PCR5(m1, m2, P):
+def PCR6(m1, m2, P):
     """
-    PCR5融合公式  该规则显然不满足结合律, 多个证据合成顺序影响最终结果
-    第一步计算DSmC
+    PCR6 fusion formula. This rule does not satisfy the associative law, meaning that the order of combining multiple pieces of evidence affects the final result.
+    Step 1: Compute DSmC
     """
     mf1 = DSmC(m1, m2, P)
     """
-    第二步计算信度再分配
+    Step 2: Reallocate belief
     """
-    length_fod = len(P)  # 幂集长度
+    length_fod = len(P)  # Power set length
     mf2 = np.zeros((1, length_fod), 'float64')
     for i in range(length_fod):
         s1 = 0
@@ -162,91 +161,22 @@ def Murphy_weight(BoE, P, w):
             tmp += BoE[i][0][j] * w[i]
         AE[0][j] = tmp
 
-    # print("AE=", AE)
     temp = AE
     for k in range(num_SoE - 1):
         temp = DST(temp, AE, P)
     return temp
 
 
-def average_fusion(BoE):
-    score = []
-    num_FE = BoE.shape[2]
-    num_SoE = BoE.shape[0]
-    for i in range(num_FE):
-        tmp = 0
-        for j in range(num_SoE):
-            tmp += BoE[j][0][i]
-        score.append(tmp / num_FE)
-    return score
-
-
-def majority_voting(BoE):
-    """
-    只考虑贝叶斯BBA，如果不是，先做BetP
-    如果存在两个类别的票数一致，那么无法决策，按照错误决策处理
-    """
-    num_FE = BoE.shape[2]
-    num_SoE = BoE.shape[0]
-    res = np.zeros((1, num_FE))
-    for j in range(num_SoE):
-        _pre = np.argmax(BoE[j], axis=1)
-        res[0][_pre] += 1
-
-    return res
-
-
 def multiSourceFusion(boes, P):
     """
-     采用DST实现多源信息融合 ,多个信息源一个一个的融合
-    :param boes: 多个证据源存入一个np中
+    Multi-source information fusion using DST, fusing multiple sources one by one
+    :param boes: Multiple evidence sources stored in a numpy array
     """
     num_source = boes.shape[0]
     temp = boes[0]
     for i in range(num_source - 1):
         temp = DST(temp, boes[i + 1], P)
     return temp
-
-
-def multiSourceFusion_PCR5(boes, P):
-    num_source = boes.shape[0]
-    temp = boes[0]
-    for i in range(num_source - 1):
-        temp = PCR5(temp, boes[i + 1], P)
-    return temp
-
-
-def multiSourceFusion_DSmC(boes, P):
-    """
-     采用DST实现多源信息融合 ,多个信息源一个一个的融合
-    :param boes: 多个证据源存入一个np中
-    """
-    num_source = boes.shape[0]
-    temp = boes[0]
-    for i in range(num_source - 1):
-        temp = DSmC(temp, boes[i + 1], P)
-    return temp
-
-
-def discountFusion(boes, P, weighted):
-    """
-         采用DST实现多源信息折扣融合 ,多个信息源一个一个的融合,
-        :param boes: 多个证据源存入一个np中
-    """
-    # 原始BBA乘以权重因子
-    num_source = boes.shape[0]
-    # temp_boes = np.zeros((6, 1, 7))
-    temp_boes = boes  # 这种直接赋值的方式在后续的运算中会直接改变boes中的值
-
-    for j in range(num_source):
-        temp_boes[j] = weighted[j] * boes[j]
-        temp_boes[j][0][len(P) - 1] += (1 - weighted[j])
-
-    res = temp_boes[0]
-    for i in range(num_source - 1):
-        # res = DST(res, temp_boes[i + 1], P)
-        res = PCR5(res, temp_boes[i + 1], P)
-    return res
 
 
 def BetP(m, P):
@@ -258,7 +188,7 @@ def BetP(m, P):
         if len(P[i]) == 1:
             ppt = 0
             for j in range(len(P)):
-                if P[i] in P[j]:  # 仅对单子焦元分配信度
+                if P[i] in P[j]:  # Assign belief only to single focal elements
                     ppt += m[0][j] / len(P[j])
             pt.append(ppt)
     return np.array(pt)
